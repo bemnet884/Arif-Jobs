@@ -1,0 +1,107 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  clerkId   String   @unique
+  email     String   @unique
+  role      Role
+  profile   Profile?
+  jobs      Job[]          @relation("ClientJobs")
+  proposals Proposal[]     @relation("FreelancerProposals")
+  reviews   Review[]       @relation("UserReviewed")
+  createdAt DateTime       @default(now())
+
+  Review Review[]
+}
+
+model Profile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id])
+  fullName    String
+  bio         String?
+  skills      String[]
+  hourlyRate  Int?
+  location    String?
+  portfolio   String[]    // URLs to previous works
+  rating      Float?      // Avg. rating
+  createdAt   DateTime @default(now())
+}
+
+model Job {
+  id          String    @id @default(cuid())
+  clientId    String
+  client      User      @relation("ClientJobs", fields: [clientId], references: [id])
+  title       String
+  description String
+  budget      Int
+  category    String
+  deadline    DateTime?
+  proposals   Proposal[]
+  contract    Contract?
+  status      JobStatus @default(OPEN)
+  createdAt   DateTime  @default(now())
+}
+
+model Proposal {
+  id            String           @id @default(cuid())
+  freelancerId  String
+  freelancer    User             @relation("FreelancerProposals", fields: [freelancerId], references: [id])
+  jobId         String
+  job           Job              @relation(fields: [jobId], references: [id])
+  coverLetter   String
+  proposedRate  Int
+  status        ProposalStatus   @default(PENDING)
+  createdAt     DateTime         @default(now())
+  contract      Contract?
+}
+
+model Contract {
+  id           String   @id @default(cuid())
+  jobId        String   @unique
+  job          Job      @relation(fields: [jobId], references: [id])
+  proposalId   String   @unique
+  proposal     Proposal @relation(fields: [proposalId], references: [id])
+  agreedAmount Int
+  isPaid       Boolean  @default(false)
+  chapaTxnId   String?  // Store Chapa transaction ID
+  createdAt    DateTime @default(now())
+}
+
+model Review {
+  id          String   @id @default(cuid())
+  reviewerId  String   // The one who gives the review
+  userId      String   // The one being reviewed
+  reviewer    User     @relation("UserReviewed", fields: [reviewerId], references: [id])
+  user        User     @relation(fields: [userId], references: [id])
+  jobId       String
+  rating      Int      // 1-5
+  comment     String?
+  createdAt   DateTime @default(now())
+}
+
+enum Role {
+  FREELANCER
+  CLIENT
+}
+
+enum JobStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum ProposalStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+}
